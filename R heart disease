@@ -1,0 +1,327 @@
+---
+title: "R For Business - Exam Mockup"
+author: "Emanuele Costa"
+date: "15/04/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Personal Information
+
+* Student Name and Surname:
+* Student ID:
+* Date:
+
+## Dataset
+
+This database contains 76 attributes, but all published experiments refer to using a subset of 14 of them. In particular, the Cleveland database is the only one that has been used by ML researchers to this date. The "goal" field refers to the presence of heart disease in the patient. It is integer valued from 0 (no presence) to 4.
+
+### Variable Description
+
+* 1. age 
+* 2. sex 
+* 3. chest pain type (4 values) 
+* 4. resting blood pressure 
+* 5. serum cholestoral in mg/dl 
+* 6. fasting blood sugar > 120 mg/dl
+* 7. resting electrocardiographic results (values 0,1,2)
+* 8. maximum heart rate achieved 
+* 9. exercise induced angina 
+* 10. oldpeak = ST depression induced by exercise relative to rest 
+* 11. the slope of the peak exercise ST segment 
+* 12. number of major vessels (0-3) colored by flourosopy 
+* 13. thal: 3 = normal; 6 = fixed defect; 7 = reversable defect
+
+The names and social security numbers of the patients were recently removed from the database, replaced with dummy values. One file has been "processed", that one containing the Cleveland database. All four unprocessed files also exist in this directory.
+
+## Exam Set Up
+
+### Rules
+
+This exam consists of **20 questions**. Each question is awarded the same amount of points. Please refer to the course Syllabus on ecourse for the grading scheme. The exam lasts 1 hour exactly.
+
+You will have to answer each question by entering an appropriate number of R code statements inside the various **R blocks** in **this Rmd**. Remember, in R there are many ways to tackle the same task so as long as your code is correct you will receive full points. 
+
+Some extra points may be awarded for particularly elegant solutions or code that double check the correctness of a transformation (i.e. displaying a table after transforming a variable into factor).
+
+### Exam Files
+
+Please go to **Week 12** and download the two files:
+
+* heart.csv
+* heart.Rmd
+
+Place the two files in the **same folder** somewhere on your desktop (you can create a new folder named **Exam** for example).
+
+Notice, that if you knit and receive an error like:
+
+<span style="color:red">
+*Quitting from lines 93-94 (Heart.Rmd) 
+Error in file(file, "rt") : cannot open the connection
+Calls: <Anonymous> ... withVisible -> eval -> eval -> read.csv -> read.table -> file*
+</span>
+
+you most likely didn't put the two files in the same folder. **No help will be provided in this case since you need to know how to copy files on your computer.**
+
+### General tips
+
+In case you cannot solve a specific question, for example you are getting a knit compiling error, comment out the offending code (but leave it, you can be awarded partial marks also for wrong code in case you were close enough to the actual solution).
+
+Let's say you have the following two lines that do not compile:
+
+```{r wrong_1, eval=FALSE}
+l1 <- something_wrong()
+l2 <- something_wrong()
+```
+
+Simply comment them as:
+
+```{r wrong_2, eval=FALSE}
+#l1 <- something_wrong()
+#l2 <- something_wrong()
+```
+
+and move forward. Notice that unfortunately there will be some questions based on previous questions so try to solve all of them.
+
+## Questions
+
+### Q1
+
+Please load the **gpplot2**, **caret**, **mice**, **party** and **dplyr** libraries. In case you haven't installed the corresponding packages you will have to run **install.packages** beforehand from the console.
+
+```{r Q1, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(dplyr)
+library(caret)
+library(mice)
+library(ranger)
+#library(party)
+#library(rpart)
+#library(reprtree)
+```
+
+### Q2
+
+Please read the **heart.csv** file and assign it to a dataframe **train**. Notice you will have to set the condition to not have **character** variables automatically converted to **R factors**.
+
+```{r Q2}
+train <- read.csv("heart.csv", stringsAsFactors = F, encoding = 'UTF-8')
+colnames(train)[1] <- 'age'
+```
+
+### Q3
+
+Please display the **structure**, **dimensions** and check the dataframe **train** for missing values.
+
+```{r Q3}
+dim(train)
+str(train)
+sapply(train, function(X) sum(is.na(train)))
+
+```
+
+### Q4 
+
+Please set the **random seed** to **1234** and table the **target** variable. Finally, display the first **20 entries** in the **target** variable.
+
+```{r Q4}
+set.seed(1234)
+table(train$target, useNA = "always")
+head(train$target, n= 20)
+```
+
+### Q5
+
+Please copy the variable **age** in the **train** dataframe to a variables **age_orig**. Display the length of **age_orig**.
+
+```{r Q5}
+age_orig <- train$age
+length(age_orig)
+```
+
+### Q6
+
+Please assign **20 NAs** to the variables **age** in the **train** dataframe by using the **sample** function. Display the table of the single **train$age** variable afterwards showing NAs.
+
+```{r Q6}
+index <- sample(seq_len(nrow(train)), 20)
+train$age[index] <- NA
+table(train$age, useNA = "always")
+```
+
+### Q7 
+
+Please impute the **20 NAs** into the variable **age** using the **mean age** and **floor** the calculated mean. Table the variable **age** afterwards.
+
+```{r Q7}
+
+train$age[is.na(train$age)] <- floor(mean(train$age, na.rm=T))
+table(train$age, useNA = "always")
+```
+
+### Q8
+
+Please overwrite the variable **train\$age** with the previously saved values in **age_orig**, table the variable **train\$age** and check it is back to the original values.
+
+```{r Q8}
+train$age <- age_orig
+table(train$age, useNA = "always")
+```
+
+### Q9
+
+Please run a one-way anova test on the variable **sex** to check if there is a difference in heart disease between **sex**. Assign the result to a variable **anova** and **summarize** it.
+
+```{r Q9}
+anova <- aov(formula=target ~ factor(sex), data = train)
+summary(anova)
+```
+
+### Q10
+
+Please change the **0 and 1** in **target** to **no and yes** als change the **0 and 1** in sex to **female and male**. Factorize the variables **target, sex** and table them. Overwrite the original variables. Finally, display the **structure** of the **train** dataframe.
+
+```{r Q10}
+train$target <- ifelse(train$target == 0, "no", "yes")
+train$target <- as.factor(train$target)
+table(train$target)
+
+train$sex <- ifelse(train$sex == 0, "female", "male")
+train$sex <- as.factor(train$sex)
+table(train$sex)
+
+str(train)
+```
+
+### Q11
+
+Please plot a histogram using **ggplot** of the variable **age** filled by **target** set the **bin size** to **1**.
+
+```{r Q11}
+ggplot(data=train, aes(x=age, fill=target)) + geom_histogram(binwidth = 1)
+```
+
+
+
+
+### Q12
+
+Please bin the **age** variable into **5 years** bins using the function **cut** and **10 breaks** assign to a new variable **age.B** in the **train** dataframe. Finally, remove the **age** variable and display the table of the newly created **age.B** variable. 
+
+```{r Q12}
+
+train$age.B <- cut(train$age, breaks=5)
+train$age <- NULL
+table(train$age.B)
+```
+
+
+
+### Q13
+
+Please create a **train.sub** and **validation.sub** dataframes from **train**. You should split the **train** in **80/20**  and use the **floor** function to avoid decimals in the splits. You should also drop the **target** variable from **validation.sub** after saving the original **validation.sub\$target** into a **labels** variable. Finally, display the dimensions for **train.sub** and **validation.sub** to check everything is in order.
+
+```{r Q13}
+sample_size <- floor(nrow(train) * 0.8)
+index <- sample(seq_len(nrow(train)), sample_size)
+train.sub <- train[index,]
+validation.sub <- train[-index,]
+labels <- validation.sub$target
+validation.sub$target <- NULL
+dim(train.sub)
+dim(validation.sub)
+```
+
+### Q14
+
+Please run a logistic regression using the **glm** function with the **train.sub** dataframe using all the variables. Assign the regression results to a **reg** variable and **summarize** it. Remember you will have to set the **family** parameter to **binomial**.
+
+```{r Q14}
+reg <- glm(target ~ ., data = train.sub, family = binomial())
+summary(reg)
+```
+
+### Q15
+
+Using the model **reg** previously obtained, predict on **validation.sub** and assing the predictions to a new variables **preds**. Remember that to get the probabilities out of the predict function you will have to assign the parameter **type** to **response**. Display the first **20 entries** of the **preds** variable. Display the firsr **20 entries** also of the original values in 
+
+```{r Q15}
+preds <- predict(reg, validation.sub, type="response")
+head(preds, n=20)
+head(labels, n= 20)
+```
+
+### Q16
+
+Using the **preds** obtained previously and the original **labels** display the **confusionMatrix** of the logistic regression. Notice you will have to convert the **preds** probabilities to the same factor levels of target **yes and no**. Use a cutoff of **0.5** to decide between **yes and no**.
+
+```{r Q16}
+preds.F <- as.numeric(preds > 0.5)
+preds.F <- ifelse(preds.F==0, "no", "yes")
+preds.F <- as.factor(preds.F)
+head(preds.F, n= 20)
+head(labels, n=20)
+confusionMatrix(preds.F, labels)
+```
+
+## Q17
+
+Please plot a scatterplot of the variables **chol** and **trestbps**. After plotting the scatterplot calculate the correlation between these two variables in **train** dataframe.
+
+```{r Q17}
+ggplot(train, aes(x=chol, y=trestbps))+geom_point()
+cor(train$chol, train$trestbps)
+```
+
+## Q18
+
+Please save a copy of the variable **age.B** into a new variable **age_orig** (**age_orig** should not be in the dataframe **train** but be a separate variable). Create **20 NAs** for the variable **age.B** in the **train** dataframe using the **sample** function. After creating the **NAs** impute the dataframe using the **mice** package. Finally, display the imputed values along with the **age_orig** and the variable **age.B**, use the function **head** to display the first **20** observations.
+
+```{r Q18}
+
+index<- sample(seq_len(nrow(train)), size=20)
+index
+
+age_orig <- train$age.B
+length(age_orig)
+length(train$age.B)
+
+train$age.B[index] <- NA
+table(train$age.B, useNA = 'always')
+
+mice_ages <- mice(train[, !names(train) %in% "target"], method='rf')
+mice_out <- complete(mice_ages)
+head(mice_out)
+table(mice_out$age.B, useNA = "always")
+
+train$AgeImp2 <- mice_out$age.B
+df <- train[,c("target","age.B","AgeImp2")]
+df$age_orig <- age_orig
+head(df, n=20)
+
+```
+
+## Q19
+
+Let's run a different classification algorithm on our data: **random forest**. Please use the package **ranger** to run a random forest on all the variables in **train.sub**. Use the **sort** function to display the sorted **variable.importance** returned from **ranger**.
+
+```{r Q19}
+rf <- ranger(target ~ ., data = train.sub, importance="impurity", num.trees=100)
+rf
+sort(rf$variable.importance)
+```
+
+
+## Q20
+
+Finally, let's check how **random forest** is doing on our **validation.sub** dataframe. Use the **predict** function to get the predictions out of **validation.sub** and then build the corresponding **confusionMatrix**.
+
+```{r Q20}
+preds <- predict(rf, validation.sub)
+preds
+confusionMatrix(preds$predictions, labels)
+```
+## End of the exam
