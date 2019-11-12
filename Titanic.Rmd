@@ -1,0 +1,70 @@
+---
+title: "Titanic"
+author: "Argen Almazbek uulu"
+date: "March 11, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##Titanic
+```{r Load_dataset}
+library(ggplot2)
+train <- read.csv('train.csv', stringsAsFactors = F)
+str(train)
+dim(train)
+length(unique(train$Name))
+train$PassengerId <- NULL
+head(train$Name, n=20)
+tail(train$Name, n=20)
+```
+
+```{r EDA}
+ggplot(train, aes(x = Sex, fill = factor(Survived))) + geom_bar()
+t.test(train[which(train$Sex=='male'), 'Survived'], train[which(train$Sex=='female'), 'Survived'])
+sapply(train, function(x) sum(is.na(x)))
+#train$Survived[which(train$Age<1)]
+#train$Status <- ifelse(train$Age < 3, 'Child' , 'Adult')
+
+#ggplot(train, aes(x = Status, fill = factor(Survived))) + geom_bar()
+
+#t.test(train[which(train$Status=='Child'), 'Survived'], #train[which(train$Status=='Adult'), 'Survived'])
+
+
+train$Age[is.na(train$Age)] <- mean(train$Age, na.rm=T)
+#sapply(train, function(x) sum(is.na(x)))
+#table(train$Age)
+
+age_class <- function(x) {
+  if (x >= 50) {return ('old')}
+  else if (x >18 & x<50) {return ('adult')}
+  else if (x >13 & x <=18) {return ('teenager')}
+  else if (x >3 & x <=13) {return ('child')}
+  else {return ('infant')}
+}
+
+train$AgeClass <- sapply(train$Age, function(x)age_class(x))
+table(train$AgeClass)
+
+ggplot(train, aes(x = AgeClass, fill = factor(Survived))) + geom_bar()
+
+train[train$Age < 3 & train$Survived == 0, c('Name','Sex', 'Age')]
+
+set.seed(1234)
+
+sample_size <- floor(0.75*nrow(train))
+sample_size
+train_ind <- sample(seq_len(nrow(train)), size = sample_size)
+head(train_ind, n=10)
+train_sample <- train[train_ind,]
+train_valid <- train[-train_ind,]
+
+ggplot(train, aes(x = factor(Survived))) + geom_bar()
+
+summary(train$Survived)
+
+```
+
+

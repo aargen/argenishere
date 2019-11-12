@@ -1,0 +1,159 @@
+---
+title: "Heart disease"
+author: "Argen Almazbek uulu"
+date: "April 4, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Context
+This database contains 76 attributes, but all published experiments refer to using a subset of 14 of them. In particular, the Cleveland database is the only one that has been used by ML researchers to this date. The "goal" field refers to the presence of heart disease in the patient. It is integer valued from 0 (no presence) to 4.
+
+Content
+
+Attribute Information: 
+1. age 
+2. sex 
+3. chest pain type (4 values) 
+4. resting blood pressure 
+5. serum cholestoral in mg/dl 
+6. fasting blood sugar > 120 mg/dl
+7. resting electrocardiographic results (values 0,1,2)
+8. maximum heart rate achieved 
+9. exercise induced angina 
+10. oldpeak = ST depression induced by exercise relative to rest 
+11. the slope of the peak exercise ST segment 
+12. number of major vessels (0-3) colored by flourosopy 
+13. thal: 3 = normal; 6 = fixed defect; 7 = reversable defect
+
+The names and social security numbers of the patients were recently removed from the database, replaced with dummy values. One file has been "processed", that one containing the Cleveland database. All four unprocessed files also exist in this directory.
+
+To see Test Costs (donated by Peter Turney), please see the folder "Costs"
+
+Acknowledgements
+Creators: 
+1. Hungarian Institute of Cardiology. Budapest: Andras Janosi, M.D. 
+2. University Hospital, Zurich, Switzerland: William Steinbrunn, M.D. 
+3. University Hospital, Basel, Switzerland: Matthias Pfisterer, M.D. 
+4. V.A. Medical Center, Long Beach and Cleveland Clinic Foundation: Robert Detrano, M.D., Ph.D.
+
+Donor: David W. Aha (aha '@' ics.uci.edu) (714) 856-8779
+
+Inspiration
+Experiments with the Cleveland database have concentrated on simply attempting to distinguish presence (values 1,2,3,4) from absence (value 0).
+
+See if you can find any other trends in heart data to predict certain cardiovascular events or find any clear indications of heart health.
+
+
+```{r libs, message=F, warning=F}
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+library(caret)
+library(corrplot)
+```
+
+```{r data}
+data <- read.csv('heart.csv', stringsAsFactors = F, encoding = 'UTF-8')
+str(data)
+colnames(data)[1] <- 'age'
+str(data)
+```
+
+```{r EDA}
+##Let's check for the missing values
+sapply(data, function(X) sum(is.na(X)))
+
+##Let's get the intuition of how many males and females are there in a dataset
+ggplot(data, aes(x = factor(x = sex))) + geom_bar(fill ='blue')
+
+## Here is the numbers of males and females (females = 0, males = 1)
+data %>%
+  group_by(sex) %>%
+  summarize(n())
+
+## Now let's see the distribution of Chest Pain Type variable
+ggplot(data, aes(x = factor(cp))) + geom_bar(fill = 'blue')
+
+## Age to target
+data$age[data$age == 29] <- 31
+AgeBins <- paste(seq(30,80,10),"'d")
+data$age.B <- cut(data$age, seq(30,90,10),labels = AgeBins)
+table(data$age.B, useNA = "always")
+ggplot(data=data, aes(x=age.B,fill=factor(target))) + geom_bar()
+
+## Resting blood preasure
+summary(data$trestbps)
+summary(data$age)
+summary(data$chol)
+
+ggplot(data, aes(x = 1, y = trestbps)) + geom_boxplot()
+ggplot(data, aes(x = 1, y = chol)) + geom_boxplot()
+  
+```
+
+#Feature Transformation
+```{r transform}
+ifelse(data$sex==0, 'female', 'male' )
+data$sex <- as.factor(data$sex)
+colnames(data)[3] <- 'chest_pain_type'
+colnames(data)[4] <-'resting_blood_preasure'
+colnames(data)[6] <- 'fasting_blood_sugar'
+colnames(data)[8] <- 'max_heart_rate'
+colnames(data)[9] <- 'excercise_induced_angina'
+colnames(data)[13] <- 'thalassemia'
+data$chest_pain_type <- as.factor(data$chest_pain_type)
+data$fasting_blood_sugar <- as.factor(data$fasting_blood_sugar)
+data$restecg <- as.factor(data$restecg)
+
+```
+
+#First Logistic Regression
+```{r Linear Model}
+data$target <- as.factor(data$target)
+set.seed(1997)
+
+features <- data %>% select(target, age.B, chest_pain_type, sex, resting_blood_preasure, chol, fasting_blood_sugar, restecg, max_heart_rate, thalassemia, excercise_induced_angina, oldpeak, slope, ca)
+str(features)
+sample_size <- floor(0.75*nrow(features))
+sample_size
+data_ind <- sample(seq_len(nrow(features)), size = sample_size)
+head(data_ind, n=10)
+data_sample <- features[data_ind,]
+data_val <- features[-data_ind,]
+labels_val <- data_val$target
+data_val$target <- NULL
+
+
+
+reg <- glm(target ~ ., data = features, family = binomial())
+summary(reg)
+
+
+preds <- predict(reg, newdata = data_val, type = "response")
+
+confusionMatrix(as.factor(as.numeric(preds > 0.5)), labels_val)
+head(data_val$target)
+head(as.numeric(preds > 0.5))
+```
+
+#Correlation matrix
+```{r Cor}
+correlations <- cor(data[,c(1,5,4,8)])
+correlations
+corrplot(correlations)
+```
+
+#Second Regression
+```{r Linear Model 2}
+features2 <- data %>% select(target, chest_pain_type, sex, resting_blood_preasure, max_heart_rate, thalassemia, excercise_induced_angina, oldpeak, ca)
+reg <- glm(target ~ ., data = features2, family = binomial())
+summary(reg)
+
+
+preds2 <- predict(reg, newdata = data_val, type = "response")
+
+confusionMatrix(as.factor(as.numeric(preds2 > 0.5)), labels_val)
+```
